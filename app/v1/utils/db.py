@@ -19,3 +19,25 @@ class PeeweeConectionState(peewee._ConnectionState):
     def __init__(self, **kwargs):
         super().__setattr__("_state", db_state)
         super().__init__(**kwargs)
+        
+    def __setattr__(self, name, value):
+        self.__state.get()[name] = value
+        
+    def __getattr__(self, name):
+        return self.__state.get()[name]
+    
+db = peewee.PostgresqlDatabase(DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST, port=DB_PORT)    
+    
+db.__state = PeeweeConectionState()
+    
+async def reset_db_state():
+    db.__state.__state.set(db_state_default.copy())
+    db.__state.reset()
+
+def get_db(db_state=Depends(reset_db_state)):
+    try:
+        db.connect()
+        yield
+    finally:
+        if not db.is_closed():
+            db.close()
